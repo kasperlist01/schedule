@@ -3,10 +3,10 @@ import json
 import locale
 import re
 from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service as ChromeService, Service
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
 import time
 from parser import write_data
 
@@ -16,16 +16,15 @@ def setup_driver():
     locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
     options = Options()
     options.add_argument("--headless")
-
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--start-maximized')
 
     # service = Service("/Users/kasper/Documents/Projecst/IT/Python/rasspisanie/chromedriver")
-    service = Service("111/chromedriver")
-    # driver = webdriver.Chrome(options=options, service=ChromeService(ChromeDriverManager().install()))
-    driver = webdriver.Chrome(service=service, options=options)
+    # service = Service("/chromedriver")
+    driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    # driver = webdriver.Chrome(service=service, options=options)
     return driver
 
 
