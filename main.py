@@ -122,6 +122,9 @@ def get_timetable(link_dict):
         today = datetime.datetime.now()
         if 'Файл обновлен' in data.keys():
             date = data['Файл обновлен']
+            # Разделяем сохраненные даты на строки и выбираем последние 100 дат
+            dates = date.split('\n')[-99:]
+            date = "\n".join(dates)
             timetable_dict['Файл обновлен'] = f"{date}\nРасписание обновлено в {today.strftime('%Y-%m-%d %H:%M')}"
         else:
             timetable_dict['Файл обновлен'] = f"Расписание обновлено в {today.strftime('%Y-%m-%d %H:%M')}"
@@ -133,9 +136,9 @@ def start_pars():
     url = 'https://orel.ranepa.ru/studentam-i-slushatelyam/index.php'
     while True:
         links = get_links(url)
-        print(f'start() {links=}')
+        # print(f'start() {links=}')
         timetable = get_timetable(links)
-        print(f'get_timetable() {timetable=}')
+        # print(f'get_timetable() {timetable=}')
         if len(timetable) != 0:
             with open('timetable.json', 'w', encoding='utf-8') as json_file:
                 json.dump(timetable, json_file, ensure_ascii=False, indent=4)
