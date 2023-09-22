@@ -124,7 +124,16 @@ async def show_rasp_tel(callback: types.CallbackQuery, callback_data: MyCallback
 @dp.message(F.text.lower() == "сервисная информация")
 async def ch_month(message: types.Message):
     data = write_data()
-    await message.answer(f"Скрытое меню\n\n{data['Файл обновлен']}")
+    file_update_text = data.get("Файл обновлен", "")
+
+    # Разделяем текст по символу новой строки и выбираем последние 30 элементов
+    lines = file_update_text.split("\n")
+    last_30_dates = lines[-30:]
+
+    # Формируем ответ, объединяя последние 30 дат снова в строку
+    response = "Скрытое меню\n\n" + "\n".join(last_30_dates)
+
+    await message.answer(response)
 
 
 async def main() -> None:
