@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import token
 from parser import get_grup, get_monthly_schedule, convert_date_format, show_rasp, format_date_with_day, \
-    load_user_groups, user_groups, save_user_groups, write_data
+    load_user_groups, user_groups, save_user_groups, write_data, write_users
 
 bot = Bot(token=token)
 
@@ -124,6 +124,7 @@ async def show_rasp_tel(callback: types.CallbackQuery, callback_data: MyCallback
 @dp.message(F.text.lower() == "сервисная информация")
 async def ch_month(message: types.Message):
     data = write_data()
+    data_user = write_users()
     file_update_text = data.get("Файл обновлен", "")
 
     # Разделяем текст по символу новой строки и выбираем последние 30 элементов
@@ -131,7 +132,8 @@ async def ch_month(message: types.Message):
     last_30_dates = lines[-30:]
 
     # Формируем ответ, объединяя последние 30 дат снова в строку
-    response = "Скрытое меню\n\n" + "\n".join(last_30_dates)
+    response = "Скрытое меню\n\n" + "\n".join(last_30_dates) + "\n"
+    response += '\n'.join([str(i) + '-' + str(j) for i, j in data_user.items()])
 
     await message.answer(response)
 

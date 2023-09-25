@@ -31,6 +31,17 @@ def write_data():
     return data
 
 
+def write_users():
+    try:
+        with open('./user_groups.json', 'r', encoding='utf-8') as json_file:
+            data = json.load(json_file)
+    except FileNotFoundError:
+        # Если файл не существует, создаем пустой словарь
+        data = {}
+
+    return data
+
+
 def get_grup():
     data = write_data()
     s = set()
@@ -131,7 +142,8 @@ def get_monthly_schedule(group_name):
     timetable_data = write_data()
 
     # Извлекаем уникальные даты из расписания
-    unique_dates = set(group.split(' // ')[1] for group in timetable_data.keys() if group.split(' // ')[0] == group_name)
+    unique_dates = set(
+        group.split(' // ')[1] for group in timetable_data.keys() if group.split(' // ')[0] == group_name)
 
     # Список месяцев, которые мы будем искать в уникальных датах
     target_months = [
