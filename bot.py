@@ -121,7 +121,7 @@ async def show_rasp_tel(callback: types.CallbackQuery, callback_data: MyCallback
     await callback.message.answer(rasp, reply_markup=builder)
 
 
-@dp.message(F.text.lower() == "сервисная информация")
+@dp.message(F.text.lower() == "сервисное меню")
 async def def_menu(message: types.Message):
     if message.chat.id in [851960898, 1074252469]:
         builder = InlineKeyboardBuilder()
