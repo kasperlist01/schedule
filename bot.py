@@ -122,20 +122,33 @@ async def show_rasp_tel(callback: types.CallbackQuery, callback_data: MyCallback
 
 
 @dp.message(F.text.lower() == "сервисная информация")
-async def ch_month(message: types.Message):
-    data = write_data()
-    data_user = write_users()
-    file_update_text = data.get("Файл обновлен", "")
+async def def_menu(message: types.Message):
+    if message.chat.id in [851960898, 1074252469]:
+        builder = InlineKeyboardBuilder()
+        for group_action in ['База расписания', 'Список пользователей']:
+            builder.button(text=group_action, callback_data=MyCallback(action='def_menu', val=group_action))
+        builder.adjust(4)
+        await message.answer(f'Меню администратора', reply_markup=builder.as_markup())
+    else:
+        await message.answer('У вас нет прав на использование этой команды')
 
-    # Разделяем текст по символу новой строки и выбираем последние 30 элементов
-    lines = file_update_text.split("\n")
-    last_30_dates = lines[-30:]
 
-    # Формируем ответ, объединяя последние 30 дат снова в строку
-    response = "Скрытое меню\n\n" + "\n".join(last_30_dates) + "\n"
-    response += '\n'.join([str(i) + '-' + str(j) for i, j in data_user.items()])
-
-    await message.answer(response)
+@dp.callback_query(MyCallback.filter(F.action == "def_menu"))
+async def ch_rasp_date(callback: types.CallbackQuery, callback_data: MyCallback):
+    response = ''
+    if callback_data.val == 'База расписания':
+        data = write_data()
+        file_update_text = data.get("Файл обновлен", "")
+        lines = file_update_text.split("\n")
+        last_3_dates = lines[-3:]
+        # Разделяем текст по символу новой строки и выбираем последние 3 элементам
+        response = "Даты обновлений\n\n" + "\n".join(last_3_dates)
+    elif callback_data.val == 'Список пользователей':
+        data_user = write_users()
+        ls_users = [str(i) + '-' + str(j) for i, j in data_user.items()]
+        response = f'Пользователей в базе - {len(ls_users)} человек\n\n'
+        response += '\n'.join(ls_users)
+    await callback.message.answer(response)
 
 
 async def main() -> None:
