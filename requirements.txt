@@ -2,3 +2,4 @@ aiogram~=3.0.0
 selenium~=4.12.0
 asyncio~=3.4.3
 webdriver_manager
+psutil

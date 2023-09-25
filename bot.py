@@ -4,6 +4,7 @@ from aiogram import types, F
 from aiogram.filters import CommandStart
 from aiogram.filters.callback_data import CallbackData
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+import psutil
 
 from config import token
 from parser import get_grup, get_monthly_schedule, convert_date_format, show_rasp, format_date_with_day, \
@@ -125,9 +126,9 @@ async def show_rasp_tel(callback: types.CallbackQuery, callback_data: MyCallback
 async def def_menu(message: types.Message):
     if message.chat.id in [851960898, 1074252469]:
         builder = InlineKeyboardBuilder()
-        for group_action in ['База расписания', 'Список пользователей']:
+        for group_action in ['База расписания', 'Список пользователей', 'Температура сервера']:
             builder.button(text=group_action, callback_data=MyCallback(action='def_menu', val=group_action))
-        builder.adjust(4)
+        builder.adjust(2)
         await message.answer(f'Меню администратора', reply_markup=builder.as_markup())
     else:
         await message.answer('У вас нет прав на использование этой команды')
@@ -148,6 +149,18 @@ async def ch_rasp_date(callback: types.CallbackQuery, callback_data: MyCallback)
         ls_users = [str(i) + '-' + str(j) for i, j in data_user.items()]
         response = f'Пользователей в базе - {len(ls_users)} человек\n\n'
         response += '\n'.join(ls_users)
+    elif callback_data.val == 'Температура сервера':
+        try:
+            temperature_info = psutil.sensors_temperatures(fahrenheit=False)
+            if "coretemp" in temperature_info:
+                core_temp = temperature_info["coretemp"]
+                response = ""
+                for entry in core_temp:
+                    response += f"Температура {entry.label}: {entry.current}°C\n"
+            else:
+                response = "Информация о температуре не доступна."
+        except AttributeError:
+            response = "Модуль psutil не поддерживает получение информации о температуре."
     await callback.message.answer(response)
 
 
