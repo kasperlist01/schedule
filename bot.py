@@ -8,7 +8,7 @@ import psutil
 
 from config import token
 from parser import get_grup, get_monthly_schedule, convert_date_format, show_rasp, format_date_with_day, \
-    load_user_groups, user_groups, save_user_groups, write_data, write_users
+    load_user_groups, user_groups, save_user_groups, write_data, write_users, add_messages, get_messages
 
 bot = Bot(token=token)
 
@@ -35,6 +35,7 @@ async def start(message: types.Message):
 
 @dp.callback_query(MyCallback.filter(F.action == "group"))
 async def ch_rasp_date(callback: types.CallbackQuery, callback_data: MyCallback):
+    add_messages(f'{callback.message.chat.first_name}_{callback.message.chat.id}', callback_data.val)
     user_name = f'{callback.message.chat.first_name}_{callback.message.chat.id}'
     selected_group = callback_data.val
     user_groups[user_name] = selected_group  # Обновляем словарь
@@ -43,6 +44,8 @@ async def ch_rasp_date(callback: types.CallbackQuery, callback_data: MyCallback)
         [types.KeyboardButton(text="Расписание на сегодня"), types.KeyboardButton(text="Расписание на завтра")],
         [types.KeyboardButton(text="Выбрать дату")]
     ]
+    if callback.message.chat.id == 851960898:
+        kb[1].append(types.KeyboardButton(text="Сервисное меню"))
     builder = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await callback.message.delete()
     await callback.message.answer(
@@ -52,6 +55,7 @@ async def ch_rasp_date(callback: types.CallbackQuery, callback_data: MyCallback)
 
 @dp.message(F.text.lower() == "расписание на сегодня")
 async def ch_month(message: types.Message):
+    add_messages(f'{message.chat.first_name}_{message.chat.id}', message.text)
     load_user_groups()
     user_name = f'{message.chat.first_name}_{message.chat.id}'
     group_schedule = user_groups[user_name]
@@ -62,6 +66,7 @@ async def ch_month(message: types.Message):
 
 @dp.message(F.text.lower() == "расписание на завтра")
 async def ch_month(message: types.Message):
+    add_messages(f'{message.chat.first_name}_{message.chat.id}', message.text)
     load_user_groups()
     user_name = f'{message.chat.first_name}_{message.chat.id}'
     group_schedule = user_groups[user_name]
@@ -73,6 +78,7 @@ async def ch_month(message: types.Message):
 @dp.message(F.text.lower() == "выбрать дату")
 async def ch_month(message: types.Message):
     load_user_groups()
+    add_messages(f'{message.chat.first_name}_{message.chat.id}', message.text)
     global month
     user_name = f'{message.chat.first_name}_{message.chat.id}'
     month, _ = get_monthly_schedule(user_groups[user_name])
@@ -97,6 +103,7 @@ def is_month(message: types.Message):
 @dp.message(is_month)
 async def ch_day(message: types.Message):
     load_user_groups()
+    add_messages(f'{message.chat.first_name}_{message.chat.id}', message.text)
     user_name = f'{message.chat.first_name}_{message.chat.id}'
     _, date = get_monthly_schedule(user_groups[user_name])
     builder = InlineKeyboardBuilder()
@@ -110,6 +117,7 @@ async def ch_day(message: types.Message):
 @dp.callback_query(MyCallback.filter(F.action == "day"))
 async def show_rasp_tel(callback: types.CallbackQuery, callback_data: MyCallback):
     load_user_groups()
+    add_messages(f'{callback.message.chat.first_name}_{callback.message.chat.id}', callback_data.val)
     group = user_groups[f'{callback.message.chat.first_name}_{callback.message.chat.id}']
     date = convert_date_format(group + ' // ' + callback_data.val)
     rasp = show_rasp(date)
@@ -117,6 +125,8 @@ async def show_rasp_tel(callback: types.CallbackQuery, callback_data: MyCallback
         [types.KeyboardButton(text="Расписание на сегодня"), types.KeyboardButton(text="Расписание на завтра")],
         [types.KeyboardButton(text="Выбрать дату")]
     ]
+    if callback.message.chat.id == 851960898:
+        kb[1].append(types.KeyboardButton(text="Сервисное меню"))
     builder = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
     await callback.message.delete()
     await callback.message.answer(rasp, reply_markup=builder)
@@ -126,10 +136,11 @@ async def show_rasp_tel(callback: types.CallbackQuery, callback_data: MyCallback
 async def def_menu(message: types.Message):
     if message.chat.id in [851960898, 1074252469]:
         builder = InlineKeyboardBuilder()
-        for group_action in ['База расписания', 'Список пользователей', 'Температура сервера']:
+        for group_action in ['База расписания', 'Список пользователей', 'Температура сервера', 'История сообщений']:
             builder.button(text=group_action, callback_data=MyCallback(action='def_menu', val=group_action))
         builder.adjust(2)
         await message.answer(f'Меню администратора', reply_markup=builder.as_markup())
+        # await message.delete()
     else:
         await message.answer('У вас нет прав на использование этой команды')
 
@@ -137,6 +148,7 @@ async def def_menu(message: types.Message):
 @dp.callback_query(MyCallback.filter(F.action == "def_menu"))
 async def ch_rasp_date(callback: types.CallbackQuery, callback_data: MyCallback):
     response = ''
+    await callback.message.delete()
     if callback_data.val == 'База расписания':
         data = write_data()
         file_update_text = data.get("Файл обновлен", "")
@@ -146,7 +158,8 @@ async def ch_rasp_date(callback: types.CallbackQuery, callback_data: MyCallback)
         response = "Даты обновлений\n\n" + "\n".join(last_3_dates)
     elif callback_data.val == 'Список пользователей':
         data_user = write_users()
-        ls_users = [str(i) + '-' + str(j) for i, j in data_user.items()]
+        ls_users = [f'{i} - {j}' for i, j in data_user.items()]
+        ls_users = [f'{num}. {el}' for num, el in enumerate(ls_users, 1)]
         response = f'Пользователей в базе - {len(ls_users)} человек\n\n'
         response += '\n'.join(ls_users)
     elif callback_data.val == 'Температура сервера':
@@ -161,7 +174,25 @@ async def ch_rasp_date(callback: types.CallbackQuery, callback_data: MyCallback)
                 response = "Информация о температуре не доступна."
         except AttributeError:
             response = "Модуль psutil не поддерживает получение информации о температуре."
-    await callback.message.answer(response)
+    elif callback_data.val == 'История сообщений':
+        data_user = write_users()
+        ls_users = [ky for ky in data_user.keys()]
+        builder = InlineKeyboardBuilder()
+        for group_action in ls_users:
+            builder.button(text=group_action, callback_data=MyCallback(action='ch_user', val=group_action))
+        builder.adjust(2)
+        await callback.message.answer(f'Выберите пользователя', reply_markup=builder.as_markup())
+    if callback_data.val != 'История сообщений':
+        await callback.message.answer(response)
+        await def_menu(callback.message)
+
+
+@dp.callback_query(MyCallback.filter(F.action == "ch_user"))
+async def ch_user(callback: types.CallbackQuery, callback_data: MyCallback):
+    tx = get_messages(callback_data.val)
+    await callback.message.answer(f'{callback_data.val}\n\n{tx}')
+    await callback.message.delete()
+    await def_menu(callback.message)
 
 
 async def main() -> None:

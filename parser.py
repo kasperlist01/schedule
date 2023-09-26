@@ -20,6 +20,22 @@ def save_user_groups():
         json.dump(user_groups, file, ensure_ascii=False, indent=4)
 
 
+def save_messages(data_messages):
+    with open('./messages.json', 'w', encoding='utf-8') as file:
+        json.dump(data_messages, file, ensure_ascii=False, indent=4)
+
+
+def write_messages():
+    try:
+        with open('./messages.json', 'r', encoding='utf-8') as json_file:
+            data = json.load(json_file)
+    except FileNotFoundError:
+        # Если файл не существует, создаем пустой словарь
+        data = {}
+
+    return data
+
+
 def write_data():
     try:
         with open('./timetable.json', 'r', encoding='utf-8') as json_file:
@@ -185,6 +201,23 @@ def show_rasp(date):
     except:
         msg = 'Расписание на этот день не заполнено'
     return msg
+
+
+def add_messages(messages_key, messages_val):
+    today = datetime.datetime.now()
+    ms_user = write_messages()
+    if messages_key in ms_user.keys():
+        ms = ms_user[messages_key]
+        ms_user[messages_key] = f'{ms}\n{today.strftime("%Y-%m-%d %H:%M")} -- {messages_val}'
+    else:
+        ms_user[messages_key] = f'{today.strftime("%Y-%m-%d %H:%M")} -- {messages_val}'
+    save_messages(ms_user)
+
+
+def get_messages(messages_key):
+    ms_user = write_messages()
+    ls_ms_user = ms_user[messages_key].split('\n')[-30:]
+    return '\n'.join(ls_ms_user)
 
 
 if __name__ == '__main__':
