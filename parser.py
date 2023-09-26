@@ -216,7 +216,7 @@ def add_messages(messages_key, messages_val):
 
 def get_messages(messages_key):
     ms_user = write_messages()
-    ls_ms_user = ms_user[messages_key].split('\n')[-30:]
+    ls_ms_user = ms_user.get(messages_key, '').split('\n')[-30:]
     return '\n'.join(ls_ms_user)
 
 
