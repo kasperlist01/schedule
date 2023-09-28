@@ -28,13 +28,9 @@ def setup_driver():
     return driver
 
 
-def get_links(url: str) -> dict:
+def get_links(url: str, driver) -> dict:
     # Создаем словарь для хранения ссылок и их описаний
     link_dict = {}
-
-    # Создание и настройка веб-драйвера
-    driver = setup_driver()
-
     # try:
     # Открываем страницу в браузере с помощью Selenium
     driver.get(url)
@@ -68,9 +64,8 @@ def add_smiley_to_audience_and_teacher(text):
     return text
 
 
-def get_timetable(link_dict):
+def get_timetable(link_dict, driver):
     # Создание и настройка веб-драйвера
-    driver = setup_driver()
 
     # Инициализируем словарь для хранения расписания
     timetable_dict = {}
@@ -132,12 +127,12 @@ def get_timetable(link_dict):
     return timetable_dict
 
 
-def start_pars():
+def start_pars(driver):
     url = 'https://orel.ranepa.ru/studentam-i-slushatelyam/index.php'
     while True:
-        links = get_links(url)
+        links = get_links(url, driver)
         # print(f'start() {links=}')
-        timetable = get_timetable(links)
+        timetable = get_timetable(links, driver)
         # print(f'get_timetable() {timetable=}')
         if len(timetable) != 0:
             with open('timetable.json', 'w', encoding='utf-8') as json_file:
@@ -148,4 +143,5 @@ def start_pars():
 
 
 if __name__ == "__main__":
-    start_pars()
+    driver = setup_driver()
+    start_pars(driver)
