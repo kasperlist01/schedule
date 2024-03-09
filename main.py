@@ -1,5 +1,4 @@
-import datetime
-import json
+import sqlite3
 import locale
 import re
 from selenium import webdriver
@@ -8,11 +7,11 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 import time
-from parser import write_data
+from tqdm import tqdm
+from parser_1 import write_data
 
 
 def setup_driver():
-    # Настройка веб-драйвера
     locale.setlocale(locale.LC_TIME, 'ru_RU.UTF-8')
     options = Options()
     options.add_argument("--headless")
@@ -21,39 +20,44 @@ def setup_driver():
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--start-maximized')
 
-    # service = Service("/Users/kasper/Documents/Projecst/IT/Python/rasspisanie/chromedriver")
-    # service = Service("/chromedriver")
     driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
-    # driver = webdriver.Chrome(service=service, options=options)
+    driver.implicitly_wait(7)
     return driver
 
 
-def get_links(url: str, driver) -> dict:
-    # Создаем словарь для хранения ссылок и их описаний
+def get_links(faculty, url: str, driver) -> dict:
     link_dict = {}
-    # try:
-    # Открываем страницу в браузере с помощью Selenium
     driver.get(url)
-    time.sleep(1)
-    print('прошли driver.get(url)')
 
-    # Находим элементы с классом "ranepa-hidden"
-    elements = driver.find_elements(By.CLASS_NAME, 'ranepa-hidden')
+    elements = driver.find_elements(By.TAG_NAME, 'h3')
 
-    # Регулярное выражение для поиска курсов
-    pattern = r'[1-4]\s+курс'
-
-    # Выводим текст из каждого найденного элемента, соответствующего регулярному выражению
     for element in elements:
-        course = element.find_element(By.CLASS_NAME, 'ranepa-head-line').text
-        if re.search(pattern, course):
-            ranepa = element.find_element(By.CLASS_NAME, 'ranepa-hidden-content')
-            link_elements = ranepa.find_elements(By.TAG_NAME, 'a')
-            for link_element in link_elements:
-                link = link_element.get_attribute('href')
-                description = link_element.get_attribute('text')
-                link_dict[description] = link
-                # print(f'get_links() {link=}')
+        if faculty in element.text.lower():
+            # Определение количества следующих элементов для поиска на основе условия
+            sibling_count = 4 if faculty in ['колледж', 'аспирантура'] else 2
+            
+            # Получаем следующие элементы с учетом sibling_count
+            next_elements = element.find_elements(By.XPATH, f'./following-sibling::*[contains(@class, "ranepa-hidden")][position() <= {sibling_count}]')
+            
+            temp_link_dict = {}
+            for el in next_elements:
+                ranepa = el.find_element(By.CLASS_NAME, 'ranepa-hidden-content')
+                link_elements = ranepa.find_elements(By.TAG_NAME, 'a')
+                for link_element in link_elements:
+                    link = link_element.get_attribute('href')
+                    description = link_element.get_attribute('text')
+                    temp_link_dict[description] = link
+            
+            link_dict[element.text] = temp_link_dict
+
+    if len(link_dict) == 1:
+        link_dict = list(link_dict.values())[0]
+    else:
+        for faculty_key, obj in link_dict.items():
+            if 'семестр' in faculty_key:
+                link_dict = obj
+    print('Ссылки получены')
+
     return link_dict
 
 
@@ -63,16 +67,43 @@ def add_smiley_to_audience_and_teacher(text):
                   text)  # Добавляем смайлик перед именем преподавателя
     return text
 
+def add_timetable_to_database(timetable_dict, faculty):
+    # Подключаемся к базе данных (или создаем новую, если она не существует)
+    conn = sqlite3.connect('timetable.db')
+    cursor = conn.cursor()
+    
+    for description_day, subject in timetable_dict.items():
+        description, day_of_week = description_day.split(' // ')
+        # Проверяем, есть ли уже запись для данной даты, группы и факультета
+        cursor.execute("""SELECT ID, Расписание FROM Schedule WHERE
+                            Дата=? AND Группа=? AND Факультет=?""", 
+                        (day_of_week, description, faculty))
+        result = cursor.fetchone()
 
-def get_timetable(link_dict, driver):
-    # Создание и настройка веб-драйвера
+        if subject:
+            if result:
+                schedule_id, existing_subject = result
+                if existing_subject != subject:
+                    # Если предмет изменился, обновляем запись
+                    cursor.execute("""UPDATE Schedule SET Расписание=? WHERE ID=?""",
+                                    (subject, schedule_id))
+            else:
+                # Если записи нет, добавляем новую
+                cursor.execute("""INSERT INTO Schedule (Дата, Группа, Расписание, Факультет) 
+                                    VALUES (?, ?, ?, ?)""", 
+                                (day_of_week, description, subject, faculty))
+        
+    # Сохраняем изменения и закрываем соединение
+    conn.commit()
+    conn.close()
 
+def get_timetable(link_dict, driver, faculty):
     # Инициализируем словарь для хранения расписания
     timetable_dict = {}
     subject_list = []
     first = True
     # Создаем словарь с временами для пар
-    time_schedule = {
+    college_schedule = {
         1: "8.00 – 9.30",
         2: "9.40 – 11.10",
         3: "11.40 – 13.10",
@@ -83,18 +114,30 @@ def get_timetable(link_dict, driver):
         8: "20.20 – 21.50"
     }
 
-    # Итерируемся по ссылкам и описаниям
-    for description, link in link_dict.items():
+    faculty_schedule = {
+        1: "8.00 – 9.20",
+        2: "9.40 – 11.00",
+        3: "11.30 – 12.50",
+        4: "13.10 – 14.30",
+        5: "14.50 – 16.10",
+        6: "16.40 – 18.00",
+        7: "18.20 – 19.40",
+        8: "20.00 – 21.20"
+    }
+    
+    time_schedule = faculty_schedule if 'факультет' in faculty.lower() else college_schedule
+
+    for description, link in tqdm(link_dict.items(), desc="Парсинг ссылок", unit="link"):
         driver.get(link)
-        time.sleep(1)
         tables = driver.find_elements(By.TAG_NAME, 'table')
-        for table in tables:
+        for table in tqdm(tables, desc="Обработка таблиц", leave=False):
             for row in table.find_elements(By.TAG_NAME, 'tr')[1:]:
                 # Извлекаем ячейки из строки
                 cells = row.find_elements(By.TAG_NAME, 'td')
                 # Извлекаем информацию из ячеек
                 day_of_week = cells[0].text
                 if day_of_week != 'Время':
+                    day_of_week = day_of_week.replace(',', ', ')
                     for num in range(1, len(cells)):
                         subject = cells[num].text
                         if subject != '' and subject != '_':
@@ -104,44 +147,22 @@ def get_timetable(link_dict, driver):
                                 first = False
                             else:
                                 subject_list.append(f'🕰{time_schedule[num]}\n📖{subject}')
-                                # print(f'get_timetable() {subject_list=}')
                     # Применяем функцию для добавления смайликов
                     subject_list = [add_smiley_to_audience_and_teacher(event) for event in subject_list]
                     # Используем описание и день недели в качестве ключа, а список предметов в качестве значения
-                    timetable_dict[description + ' // ' + day_of_week] = subject_list
+                    timetable_dict[description + ' // ' + day_of_week] = '\n\n'.join(subject_list)
                     subject_list = []
                     first = True
+                
 
-    if len(timetable_dict) != 0:
-        data = write_data()
-        today = datetime.datetime.now()
-        if 'Файл обновлен' in data.keys():
-            date = data['Файл обновлен']
-            # Разделяем сохраненные даты на строки и выбираем последние 100 дат
-            dates = date.split('\n')[-99:]
-            date = "\n".join(dates)
-            timetable_dict['Файл обновлен'] = f"{date}\nРасписание обновлено в {today.strftime('%Y-%m-%d %H:%M')}"
-        else:
-            timetable_dict['Файл обновлен'] = f"Расписание обновлено в {today.strftime('%Y-%m-%d %H:%M')}"
-
-    return timetable_dict
-
-
-def start_pars(driver):
-    url = 'https://orel.ranepa.ru/studentam-i-slushatelyam/index.php'
-    while True:
-        links = get_links(url, driver)
-        # print(f'start() {links=}')
-        timetable = get_timetable(links, driver)
-        # print(f'get_timetable() {timetable=}')
-        if len(timetable) != 0:
-            with open('timetable.json', 'w', encoding='utf-8') as json_file:
-                json.dump(timetable, json_file, ensure_ascii=False, indent=4)
-            time.sleep(120)
-        else:
-            time.sleep(5)
-
+    if timetable_dict:
+        add_timetable_to_database(timetable_dict, faculty)
 
 if __name__ == "__main__":
     driver = setup_driver()
-    start_pars(driver)
+    url = 'https://orel.ranepa.ru/studentam-i-slushatelyam/index.php'
+    links = []
+    while not links:
+        links = get_links("Факультет «Государственное и муниципальное управление»".lower(), url, driver)
+        time.sleep(5)
+    get_timetable(links, driver, "Факультет «Государственное и муниципальное управление»")

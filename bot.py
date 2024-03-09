@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 import psutil
 
 from config import token
-from parser import get_grup, get_monthly_schedule, convert_date_format, show_rasp, format_date_with_day, \
+from parser_1 import get_grup, get_monthly_schedule, convert_date_format, show_rasp, format_date_with_day, \
     load_user_groups, user_groups, save_user_groups, write_data, write_users, add_messages, get_messages
 
 bot = Bot(token=token)
@@ -38,7 +38,7 @@ async def ch_rasp_date(callback: types.CallbackQuery, callback_data: MyCallback)
     add_messages(f'{callback.message.chat.first_name}_{callback.message.chat.id}', callback_data.val)
     user_name = f'{callback.message.chat.first_name}_{callback.message.chat.id}'
     selected_group = callback_data.val
-    user_groups[user_name] = selected_group  # Обновляем словарь
+    user_groups[user_name] = selected_group
     save_user_groups()
     kb = [
         [types.KeyboardButton(text="Расписание на сегодня"), types.KeyboardButton(text="Расписание на завтра")],
@@ -140,7 +140,6 @@ async def def_menu(message: types.Message):
             builder.button(text=group_action, callback_data=MyCallback(action='def_menu', val=group_action))
         builder.adjust(2)
         await message.answer(f'Меню администратора', reply_markup=builder.as_markup())
-        # await message.delete()
     else:
         await message.answer('У вас нет прав на использование этой команды')
 

@@ -1,0 +1,38 @@
+Ваш файл службы systemd может выглядеть следующим образом:
+--------
+[Unit]
+Description=My Python Bots
+
+[Service]
+ExecStart=/bin/bash -c '/home/admin_ks/net/bin/python3 /home/admin_ks/Projects/schedule/bot.py && /home/admin_ks/net/bin/python3 /home/admin_ks/Projects/schedule/main.py'
+WorkingDirectory=/home/admin_ks/Projects/schedule
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+--------
+
+
+В этом примере, /home/admin_ks/net/bin/python3 - это путь к вашему интерпретатору Python, а /home/admin_ks/Projects/schedule/bot.py и /home/admin_ks/Projects/schedule/main.py - это пути к вашим Python скриптам.
+
+После создания этого файла, выполните следующие команды, чтобы активировать службу:
+--------
+sudo systemctl daemon-reload
+sudo systemctl enable botscript.service
+sudo systemctl start botscript.service
+--------
+
+
+Чтобы проверить статус вашей службы, используйте:
+--------
+sudo systemctl status botscript.service
+--------
+Обратите внимание, что этот пример предполагает, что оба скрипта могут быть запущены одновременно и не зависят друг от друга. Если второй скрипт должен быть запущен только после завершения первого, вам может потребоваться другой подход.
+
+
+
+redis-cli FLUSHALL
+
+redis-server
+
+redis-cli ping
