@@ -72,6 +72,12 @@ services:
     networks:
       - schedule-net
 
+  telegram_bot:
+    build: .
+    command: python bot_test.py
+    networks:
+      - schedule-net
+
 networks:
   schedule-net:
     driver: bridge

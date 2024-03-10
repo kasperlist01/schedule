@@ -7,8 +7,8 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 import time
+import datetime
 from tqdm import tqdm
-from parser_1 import write_data
 
 
 def setup_driver():
@@ -73,6 +73,7 @@ def add_timetable_to_database(timetable_dict, faculty):
     cursor = conn.cursor()
     
     for description_day, subject in timetable_dict.items():
+        check_date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         description, day_of_week = description_day.split(' // ')
         # Проверяем, есть ли уже запись для данной даты, группы и факультета
         cursor.execute("""SELECT ID, Расписание FROM Schedule WHERE
@@ -82,16 +83,14 @@ def add_timetable_to_database(timetable_dict, faculty):
 
         if subject:
             if result:
-                schedule_id, existing_subject = result
-                if existing_subject != subject:
-                    # Если предмет изменился, обновляем запись
-                    cursor.execute("""UPDATE Schedule SET Расписание=? WHERE ID=?""",
-                                    (subject, schedule_id))
+                schedule_id = result[0]
+                cursor.execute("""UPDATE Schedule SET Расписание=?, Дата_проверки=? WHERE ID=?""",
+                                (subject, check_date, schedule_id))
             else:
-                # Если записи нет, добавляем новую
-                cursor.execute("""INSERT INTO Schedule (Дата, Группа, Расписание, Факультет) 
-                                    VALUES (?, ?, ?, ?)""", 
-                                (day_of_week, description, subject, faculty))
+                # Если записи нет, добавляем новую, включая Дату_проверки
+                cursor.execute("""INSERT INTO Schedule (Дата, Группа, Расписание, Факультет, Дата_проверки) 
+                                VALUES (?, ?, ?, ?, ?)""", 
+                            (day_of_week, description, subject, faculty, check_date))
         
     # Сохраняем изменения и закрываем соединение
     conn.commit()
@@ -102,7 +101,6 @@ def get_timetable(link_dict, driver, faculty):
     timetable_dict = {}
     subject_list = []
     first = True
-    # Создаем словарь с временами для пар
     college_schedule = {
         1: "8.00 – 9.30",
         2: "9.40 – 11.10",
@@ -124,6 +122,15 @@ def get_timetable(link_dict, driver, faculty):
         7: "18.20 – 19.40",
         8: "20.00 – 21.20"
     }
+
+    full_days = {'Пнд': 'Понедельник',
+                 'Втр': 'Вторник',
+                 'Срд': 'Среда', 
+                 'Чтв': 'Четверг', 
+                 'Птн': 'Пятница', 
+                 'Сбт': 'Суббота'
+                 }
+    
     
     time_schedule = faculty_schedule if 'факультет' in faculty.lower() else college_schedule
 
@@ -138,6 +145,8 @@ def get_timetable(link_dict, driver, faculty):
                 day_of_week = cells[0].text
                 if day_of_week != 'Время':
                     day_of_week = day_of_week.replace(',', ', ')
+                    for short_day, full_day in full_days.items():
+                        day_of_week = day_of_week.replace(short_day, full_day)
                     for num in range(1, len(cells)):
                         subject = cells[num].text
                         if subject != '' and subject != '_':
