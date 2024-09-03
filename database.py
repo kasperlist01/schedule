@@ -3,6 +3,7 @@ import locale
 import sqlite3
 from typing import List, Tuple
 
+
 class Database:
     def __init__(self):
         self.connection = sqlite3.connect('timetable.db')
@@ -14,7 +15,7 @@ class Database:
         self.cursor.execute(select_query, (f'%{faculty}%',))
         groups = self.cursor.fetchall()
         return [group[0] for group in groups]
-    
+
     def add_or_update_user(self, name, group, channel_id):
         self.cursor.execute("SELECT ID FROM main.Users WHERE ID_канала = ?", (channel_id,))
         result = self.cursor.fetchone()
@@ -23,7 +24,7 @@ class Database:
             self.cursor.execute("UPDATE main.Users SET Группа = ? WHERE ID_канала = ?", (group, channel_id))
         else:
             self.cursor.execute("INSERT INTO main.Users (Имя, Группа, Дата_регестрации, ID_канала) VALUES (?, ?, ?, ?)",
-                             (name, group, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), channel_id))
+                                (name, group, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), channel_id))
         self.connection.commit()
 
     def get_schedule_by_date(self, group: str, target_date: datetime.date) -> str:
@@ -38,8 +39,8 @@ class Database:
         if schedule:
             return schedule[0]
         else:
-            return "Расписание на этот день не найдено."
-        
+            return "Нет занятий в этот день🎉"
+
     def get_group_by_channel_id(self, channel_id):
         """Возвращает группу по id канала пользователя."""
         self.cursor.execute(
@@ -48,7 +49,7 @@ class Database:
         )
         group = self.cursor.fetchone()
         return group[0]
-    
+
     def get_list_users(self):
         self.cursor.execute(
             "SELECT Имя, ID_канала, Группа, strftime('%d.%m.%Y', Дата_регестрации) as Дата_регестрации FROM Users"
@@ -59,13 +60,13 @@ class Database:
         for user in users:
             name, channel_id, group, registration_date = user
             formatted_user = f"👤 Имя: {name}\n" \
-                            f"🆔 ID канала: {channel_id}\n" \
-                            f"🎓 Группа: {group}\n" \
-                            f"📅 Дата регистрации: {registration_date}\n"
+                             f"🆔 ID канала: {channel_id}\n" \
+                             f"🎓 Группа: {group}\n" \
+                             f"📅 Дата регистрации: {registration_date}\n"
             formatted_users.append(formatted_user)
 
         return formatted_users
-    
+
     def fetch_check_dates(self, faculty):
         self.cursor.execute(
             "SELECT Дата_проверки FROM Schedule WHERE LOWER(Факультет) LIKE LOWER(?) GROUP BY Дата_проверки ORDER BY Дата_проверки DESC LIMIT 1;",
@@ -80,10 +81,6 @@ class Database:
             return formatted_date
         else:
             return "Дата не найдена"
-
-
-
-
 
     def close(self):
         """Закрывает соединение с базой данных."""

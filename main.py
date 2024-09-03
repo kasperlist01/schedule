@@ -25,37 +25,16 @@ def setup_driver():
     return driver
 
 
-def get_links(faculty, url: str, driver) -> dict:
+def get_links(url: str, driver) -> dict:
     link_dict = {}
     driver.get(url)
 
-    elements = driver.find_elements(By.TAG_NAME, 'h3')
+    elements = driver.find_elements(By.CSS_SELECTOR, ".dropdown__content.typography a")
 
     for element in elements:
-        if faculty in element.text.lower():
-            # Определение количества следующих элементов для поиска на основе условия
-            sibling_count = 4 if faculty in ['колледж', 'аспирантура'] else 2
-            
-            # Получаем следующие элементы с учетом sibling_count
-            next_elements = element.find_elements(By.XPATH, f'./following-sibling::*[contains(@class, "ranepa-hidden")][position() <= {sibling_count}]')
-            
-            temp_link_dict = {}
-            for el in next_elements:
-                ranepa = el.find_element(By.CLASS_NAME, 'ranepa-hidden-content')
-                link_elements = ranepa.find_elements(By.TAG_NAME, 'a')
-                for link_element in link_elements:
-                    link = link_element.get_attribute('href')
-                    description = link_element.get_attribute('text')
-                    temp_link_dict[description] = link
-            
-            link_dict[element.text] = temp_link_dict
-
-    if len(link_dict) == 1:
-        link_dict = list(link_dict.values())[0]
-    else:
-        for faculty_key, obj in link_dict.items():
-            if 'семестр' in faculty_key:
-                link_dict = obj
+        link = element.get_attribute('href')
+        description = element.get_attribute('text')
+        link_dict[description] = link
     print('Ссылки получены')
 
     return link_dict
@@ -68,8 +47,7 @@ def add_smiley_to_audience_and_teacher(text):
     return text
 
 def add_timetable_to_database(timetable_dict, faculty):
-    # Подключаемся к базе данных (или создаем новую, если она не существует)
-    conn = sqlite3.connect('timetable.db')
+    conn = sqlite3.connect('timetable.db', timeout=60)
     cursor = conn.cursor()
     
     for description_day, subject in timetable_dict.items():
@@ -169,9 +147,9 @@ def get_timetable(link_dict, driver, faculty):
 
 if __name__ == "__main__":
     driver = setup_driver()
-    url = 'https://orel.ranepa.ru/studentam-i-slushatelyam/index.php'
+    url = 'https://orel.ranepa.ru/raspisanie/raspisanie-gosudarstvennoe-i-munitsipalnoe-upravlenie/'
     links = []
     while not links:
-        links = get_links("Факультет «Государственное и муниципальное управление»".lower(), url, driver)
+        links = get_links(url, driver)
         time.sleep(5)
-    get_timetable(links, driver, "Факультет «Государственное и муниципальное управление»")
+    get_timetable(links, driver, "Экономический факультет")

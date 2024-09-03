@@ -9,5 +9,3 @@ start_pars.apply_async(args=["Факультет технологий, това�
 start_pars.apply_async(args=["Факультет «Государственное и муниципальное управление»"], queue='queue1')
 
 start_pars.apply_async(args=["Колледж"], queue='queue1')
-
-start_pars.apply_async(args=["Аспирантура"], queue='queue1')

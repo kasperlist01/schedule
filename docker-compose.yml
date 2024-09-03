@@ -3,6 +3,7 @@ version: '3'
 services:
   redis:
     image: redis:alpine
+    restart: always
     ports:
       - "6379:6379"
     networks:
@@ -10,6 +11,7 @@ services:
 
   worker1:
     build: .
+    restart: always
     command: celery -A celery_config worker --loglevel=info --concurrency=1 -Q queue1 -n worker1@%h
     depends_on:
       - redis
@@ -23,6 +25,7 @@ services:
 
   worker2:
     build: .
+    restart: always
     command: celery -A celery_config worker --loglevel=info --concurrency=1 -Q queue1 -n worker2@%h
     depends_on:
       - redis
@@ -36,7 +39,35 @@ services:
 
   worker3:
     build: .
+    restart: always
     command: celery -A celery_config worker --loglevel=info --concurrency=1 -Q queue1 -n worker3@%h
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - schedule-net
+    volumes:
+      - ./:/app
+  worker4:
+    build: .
+    restart: always
+    command: celery -A celery_config worker --loglevel=info --concurrency=1 -Q queue1 -n worker4@%h
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - schedule-net
+    volumes:
+      - ./:/app
+
+  worker5:
+    build: .
+    restart: always
+    command: celery -A celery_config worker --loglevel=info --concurrency=1 -Q queue1 -n worker5@%h
     depends_on:
       - redis
     environment:
@@ -49,6 +80,7 @@ services:
 
   flower:
     build: .
+    restart: always
     command: celery -A celery_config flower --port=5555
     depends_on:
       - redis
@@ -61,6 +93,7 @@ services:
 
   send_task:
     build: .
+    restart: always
     command: >
       bash -c "sleep 10 && 
                while true; do 
@@ -74,9 +107,12 @@ services:
 
   telegram_bot:
     build: .
-    command: python bot_test.py
+    restart: always
+    command: python bot.py
     networks:
       - schedule-net
+    volumes:
+      - ./:/app
 
 networks:
   schedule-net:
